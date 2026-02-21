@@ -37,24 +37,22 @@ button{transition:all 0.15s ease;cursor:pointer;}
 // ─── PIPEFY TOKEN ─────────────────────────────────────────────────────────────
 const PIPEFY_TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJQaXBlZnkiLCJpYXQiOjE3NzE1NDgyODgsImp0aSI6IjcwNjk5ZDU3LTRkOGEtNDdhMC05ZDQxLWU3MGFiYTRiOTdmMSIsInN1YiI6MzA2NjI4MDk1LCJ1c2VyIjp7ImlkIjozMDY2MjgwOTUsImVtYWlsIjoiaGFtaWx0b25AZmluYW5jZWRlYWxlci5jb20uYnIifSwidXNlcl90eXBlIjoiYXV0aGVudGljYXRlZCJ9.Rc3j8NFiWmdQr6ZNaJDUd-HLR6QlXLcO2eJravTWJozYhkHxm12tInQ_hDiIK19nHsvvVzqnS1RhxLO9V98Y0g";
 
-// Chama proxy local /api/pipefy (sem CORS)
-async function pipefy(gqlQuery, variables) {
-  const base = window.location.origin.includes("localhost") || window.location.origin.includes("vercel.app") || window.location.origin.includes("finance-hub")
-    ? window.location.origin
-    : "";
-  const endpoint = base ? base + "/api/pipefy" : "/api/pipefy";
+// Chama o nosso backend no Vercel que já processa os dados
+async function pipefy() {
+  const endpoint = "/api/pipefy";
   
   const r = await fetch(endpoint, {
-    method: "POST",
+    method: "GET", // Mudamos para GET porque o Vercel entrega o dado pronto
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: gqlQuery, variables: variables || {} }),
   });
+
   if (!r.ok) {
-    const err = await r.json().catch(() => ({ error: "HTTP " + r.status }));
+    const err = await r.json().catch(() => ({ error: "Erro na API" }));
     throw new Error(err.error || "HTTP " + r.status);
   }
-  const data = await r.json();
-  return data;
+
+  // Retorna o JSON com success, pipeName e phases
+  return await r.json();
 }
 
 const Q_PIPES = `query{me{name email organization{name pipes(first:20){edges{node{id name cards_count}}}}}}`;
@@ -168,20 +166,48 @@ function PipefyKanban({ toast }) {
   const [newTitle, setNewTitle]     = useState("");
   const [lastSync, setLastSync]     = useState(null);
 
-  // Carrega pipes (Vercel + Pipefy real)
-useEffect(() => {
-  const load = async () => {
-    setStatus("loading-pipes"); 
-    setErrMsg("");
-    try {
-      const response = await fetch('/api/pipefy');
-      const data = await response.json();
-      
-      console.log('Pipefy API:', data); // DEBUG
-      
-      if (data.error) {
-        throw new Error(data.error);
+// Carrega os dados reais do Pipefy via Vercel
+  useEffect(() => {
+    const load = async () => {
+      setStatus("loading-pipes"); 
+      setErrMsg("");
+      try {
+        // Chama a nossa nova função que vai no Vercel
+        const data = await pipefy(); 
+        
+        console.log('Dados recebidos do Vercel:', data); // Mantive um debug melhorado
+
+        if (data.success) {
+          // Criamos uma lista com o Pipe real para alimentar o seletor de abas
+          const list = [{
+            id: "main-pipe",
+            name: data.pipeName,
+            phases: data.phases
+          }];
+          
+          setPipes(list);
+          setSelPipe("main-pipe");
+          
+          // Importante: Alimentamos o estado do PipeData com as fases que vieram
+          setPipeData({ 
+            name: data.pipeName, 
+            phases: data.phases 
+          });
+          
+          setStatus("ready");
+          setLastSync(new Date());
+        } else {
+          throw new Error(data.error || "Resposta sem sucesso da API");
+        }
+        
+      } catch(e) {
+        console.error('Erro ao carregar o Hub:', e);
+        setStatus("error"); 
+        setErrMsg("Falha ao conectar Pipefy: " + e.message);
       }
+    };
+    load();
+  }, []);
       
       // Adapta resposta do nosso proxy para seu estado
       const list = [{
