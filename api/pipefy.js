@@ -1,46 +1,44 @@
 export default async function handler(req, res) {
   try {
-    const PIPEFYTOKEN = process.env.PIPEFYTOKEN; // Token Conta Serviço
-    
-    const PIPE_ID = '306470040'; // Todas fases
-    
-    // GraphQL moderno (melhor que REST)
-    const query = `
-      query {
-        pipe(id: ${PIPE_ID}) {
-          id
-          name
-          phases {
-            id
-            name
-            cards {
-              id
-              title
-              phase_id
-              custom_fields
-              created_at
-            }
-          }
-        }
-      }
-    `;
-
-    const response = await fetch('https://api.pipefy.com/graphql', {
+    // OAuth2 Client Credentials Flow
+    const tokenResponse = await fetch('https://api.pipefy.com/oauth/token', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PIPEFYTOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'client_credentials',
+        client_id: process.env.PIPEFY_CLIENT_ID,
+        client_secret: process.env.PIPEFY_CLIENT_SECRET,
+        scope: 'pipes:read cards:read'
+      })
     });
 
-    const data = await response.json();
-    
-    res.status(200).json({
-      pipe: data.data.pipe.name,
-      phases: data.data.pipe.phases,
-      totalCards: data.data.pipe.phases.reduce((sum, phase) => sum + phase.cards.length, 0)
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Pega pipe completo com todas fases
+    const pipeResponse = await fetch(`https://api.pipefy.com/v1/pipes/${process.env.PIPE_ID}`, {
+      headers: { 
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
     });
+
+    const pipeData = await pipeResponse.json();
+    const phases = pipeData.data.phases || [];
+
+    // Organiza cards por fase
+    const cardsByPhase = {};
+    phases.forEach(phase => {
+      cardsByPhase[phase.id] = { name: phase.name, cards: [] };
+    });
+
+    res.status(200).json({
+      pipe: pipeData.data.name,
+      phases: cardsByPhase,
+      totalPhases: phases.length,
+      tokenStatus: 'OAuth2 OK'
+    });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
