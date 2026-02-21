@@ -166,28 +166,47 @@ function PipefyKanban({ toast }) {
   const [newTitle, setNewTitle]     = useState("");
   const [lastSync, setLastSync]     = useState(null);
 
-  // 1. O MOTOR (Pode ser chamado por qualquer função)
+ // 1. O MOTOR: Função para carregar os dados
   const load = useCallback(async () => {
     setStatus("loading-pipes"); 
+    setErrMsg("");
     try {
       const data = await pipefy(); 
       if (data.success) {
-        // ... lógica de formatar os cards (o que conversamos antes)
+        // Reconstruímos o 'node' para o seu design original funcionar
+        const formattedPhases = data.phases.map(phase => ({
+          ...phase,
+          cards: {
+            edges: phase.cards.map(card => ({
+              node: { ...card, createdAt: card.updated }
+            }))
+          }
+        }));
+
+        const list = [{ id: "main-pipe", name: data.pipeName, phases: formattedPhases }];
+        setPipes(list);
+        setSelPipe("main-pipe");
+        setPipeData({ name: data.pipeName, phases: formattedPhases });
         setStatus("ready");
+        setLastSync(new Date());
+      } else {
+        setStatus("error");
+        setErrMsg(data.error || "Erro na API");
       }
     } catch(e) {
-      setStatus("error");
+      setStatus("error"); 
+      setErrMsg("Falha ao conectar: " + e.message);
     }
-  }, []); // useCallback termina aqui
+  }, []); // FECHA O USECALLBACK
 
-  // 2. O GATILHO (Roda o motor assim que a tela abre)
+  // 2. O GATILHO: Roda ao carregar a tela
   useEffect(() => {
-    load(); 
-  }, [load]); // useEffect termina aqui (com o fechamento correto que estava faltando)
+    load();
+  }, [load]); // FECHA O USEEFFECT
 
-  // 3. O APELIDO (Para as funções antigas não darem erro)
+  // 3. O APELIDO: Para as funções de 'Mover Card' encontrarem o load
   const loadPipe = load;
-
+  
   // ABAIXO DISSO VOCÊ MANTÉM O RESTANTE (loadPipe, moveCard, etc)
 
   const moveCard = async (cardId, destPhaseId, phaseName) => {
