@@ -168,22 +168,40 @@ function PipefyKanban({ toast }) {
   const [newTitle, setNewTitle]     = useState("");
   const [lastSync, setLastSync]     = useState(null);
 
-  // Carrega pipes
-  useEffect(() => {
-    const load = async () => {
-      setStatus("loading-pipes"); setErrMsg("");
-      try {
-        const d = await pipefy(Q_PIPES);
-        const list = d?.me?.organization?.pipes?.edges?.map(e=>e.node) || [];
-        setPipes(list);
-        if (list.length > 0) setSelPipe(list[0].id);
-        else setStatus("error"), setErrMsg("Nenhum pipe encontrado na organização.");
-      } catch(e) {
-        setStatus("error"); setErrMsg("Falha ao conectar: " + e.message);
+  // Carrega pipes (Vercel + Pipefy real)
+useEffect(() => {
+  const load = async () => {
+    setStatus("loading-pipes"); 
+    setErrMsg("");
+    try {
+      const response = await fetch('/api/pipefy');
+      const data = await response.json();
+      
+      console.log('Pipefy API:', data); // DEBUG
+      
+      if (data.error) {
+        throw new Error(data.error);
       }
-    };
-    load();
-  }, []);
+      
+      // Adapta resposta do nosso proxy para seu estado
+      const list = [{
+        id: data.pipe,
+        name: data.pipe,
+        phases: data.phases
+      }];
+      
+      setPipes(list);
+      if (list.length > 0) setSelPipe(list[0].id);
+      else setStatus("error"), setErrMsg("Nenhum pipe encontrado.");
+      
+    } catch(e) {
+      console.error('Pipefy erro:', e); // DEBUG
+      setStatus("error"); 
+      setErrMsg("Falha ao conectar Pipefy: " + e.message);
+    }
+  };
+  load();
+}, []);
 
   // Carrega pipe selecionado
   const loadPipe = useCallback(async (id) => {
