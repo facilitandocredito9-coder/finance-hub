@@ -166,45 +166,26 @@ function PipefyKanban({ toast }) {
   const [newTitle, setNewTitle]     = useState("");
   const [lastSync, setLastSync]     = useState(null);
 
-  // Carrega os dados reais do Pipefy via Vercel
-useEffect(() => {
-    // 1. Criamos a função load fora do useEffect para que outras funções (como mover card) possam usá-la
+  // 1. O MOTOR (Pode ser chamado por qualquer função)
   const load = useCallback(async () => {
     setStatus("loading-pipes"); 
-    setErrMsg("");
     try {
       const data = await pipefy(); 
       if (data.success) {
-        const formattedPhases = data.phases.map(phase => ({
-          ...phase,
-          cards: {
-            edges: phase.cards.map(card => ({
-              node: { ...card, createdAt: card.updated }
-            }))
-          }
-        }));
-
-        const list = [{ id: "main-pipe", name: data.pipeName, phases: formattedPhases }];
-        setPipes(list);
-        setSelPipe("main-pipe");
-        setPipeData({ name: data.pipeName, phases: formattedPhases });
+        // ... lógica de formatar os cards (o que conversamos antes)
         setStatus("ready");
-        setLastSync(new Date());
-      } else {
-        setStatus("error");
-        setErrMsg(data.error || "Erro na API");
       }
     } catch(e) {
-      setStatus("error"); 
-      setErrMsg("Falha ao conectar: " + e.message);
+      setStatus("error");
     }
-  }, []);
-}
-  // 2. O useEffect apenas chama o load ao iniciar
+  }, []); // useCallback termina aqui
+
+  // 2. O GATILHO (Roda o motor assim que a tela abre)
   useEffect(() => {
-    load();
-  }, [load]);
-  // 3. Criamos um "apelido" para não dar erro caso algum botão ainda procure por loadPipe
+    load(); 
+  }, [load]); // useEffect termina aqui (com o fechamento correto que estava faltando)
+
+  // 3. O APELIDO (Para as funções antigas não darem erro)
   const loadPipe = load;
 
   // ABAIXO DISSO VOCÊ MANTÉM O RESTANTE (loadPipe, moveCard, etc)
