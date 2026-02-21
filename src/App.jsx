@@ -168,46 +168,45 @@ function PipefyKanban({ toast }) {
 
   // Carrega os dados reais do Pipefy via Vercel
 useEffect(() => {
-    const load = async () => {
-      setStatus("loading-pipes"); 
-      setErrMsg("");
-      try {
-        const data = await pipefy(); 
-        if (data.success) {
-          // --- INÍCIO DA CORREÇÃO ---
-          // Reestruturamos os dados para que o seu design original 
-          // encontre o "node" e o "edges" que ele espera.
-          const formattedPhases = data.phases.map(phase => ({
-            ...phase,
-            cards: {
-              edges: phase.cards.map(card => ({
-                node: { 
-                  ...card,
-                  createdAt: card.updated // Ajuste para a data aparecer
-                }
-              }))
-            }
-          }));
+    // 1. Criamos a função load fora do useEffect para que outras funções (como mover card) possam usá-la
+  const load = useCallback(async () => {
+    setStatus("loading-pipes"); 
+    setErrMsg("");
+    try {
+      const data = await pipefy(); 
+      if (data.success) {
+        const formattedPhases = data.phases.map(phase => ({
+          ...phase,
+          cards: {
+            edges: phase.cards.map(card => ({
+              node: { ...card, createdAt: card.updated }
+            }))
+          }
+        }));
 
-          const list = [{ id: "main-pipe", name: data.pipeName, phases: formattedPhases }];
-          setPipes(list);
-          setSelPipe("main-pipe");
-          setPipeData({ name: data.pipeName, phases: formattedPhases });
-          // --- FIM DA CORREÇÃO ---
-
-          setStatus("ready");
-          setLastSync(new Date());
-        } else {
-          setStatus("error");
-          setErrMsg(data.error || "Erro na API");
-        }
-      } catch(e) {
-        setStatus("error"); 
-        setErrMsg("Falha ao conectar: " + e.message);
+        const list = [{ id: "main-pipe", name: data.pipeName, phases: formattedPhases }];
+        setPipes(list);
+        setSelPipe("main-pipe");
+        setPipeData({ name: data.pipeName, phases: formattedPhases });
+        setStatus("ready");
+        setLastSync(new Date());
+      } else {
+        setStatus("error");
+        setErrMsg(data.error || "Erro na API");
       }
-    };
-    load();
+    } catch(e) {
+      setStatus("error"); 
+      setErrMsg("Falha ao conectar: " + e.message);
+    }
   }, []);
+
+  // 2. O useEffect apenas chama o load ao iniciar
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // 3. Criamos um "apelido" para não dar erro caso algum botão ainda procure por loadPipe
+  const loadPipe = load;
 
   // ABAIXO DISSO VOCÊ MANTÉM O RESTANTE (loadPipe, moveCard, etc)
 
