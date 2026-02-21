@@ -159,86 +159,40 @@ function PipefyKanban({ toast }) {
   const [pipes, setPipes]           = useState([]);
   const [selPipe, setSelPipe]       = useState(null);
   const [pipeData, setPipeData]     = useState(null);
-  const [status, setStatus]         = useState("idle"); // idle | loading-pipes | loading-pipe | ready | error
+  const [status, setStatus]         = useState("idle"); 
   const [errMsg, setErrMsg]         = useState("");
   const [movingCard, setMovingCard] = useState(null);
   const [showNew, setShowNew]       = useState(null);
   const [newTitle, setNewTitle]     = useState("");
   const [lastSync, setLastSync]     = useState(null);
 
-// Carrega os dados reais do Pipefy via Vercel
+  // Carrega os dados reais do Pipefy via Vercel
   useEffect(() => {
     const load = async () => {
       setStatus("loading-pipes"); 
       setErrMsg("");
       try {
         const data = await pipefy(); 
-        
-        console.log('Dados recebidos do Vercel:', data);
-
         if (data.success) {
-          const list = [{
-            id: "main-pipe",
-            name: data.pipeName,
-            phases: data.phases
-          }];
-          
+          const list = [{ id: "main-pipe", name: data.pipeName, phases: data.phases }];
           setPipes(list);
           setSelPipe("main-pipe");
-          setPipeData({ 
-            name: data.pipeName, 
-            phases: data.phases 
-          });
-          
+          setPipeData({ name: data.pipeName, phases: data.phases });
           setStatus("ready");
           setLastSync(new Date());
         } else {
-          throw new Error(data.error || "Resposta sem sucesso da API");
+          setStatus("error");
+          setErrMsg(data.error || "Erro na API");
         }
       } catch(e) {
-        console.error('Erro ao carregar o Hub:', e);
         setStatus("error"); 
-        setErrMsg("Falha ao conectar Pipefy: " + e.message);
+        setErrMsg("Falha ao conectar: " + e.message);
       }
     };
     load();
   }, []);
-      
-      // Adapta resposta do nosso proxy para seu estado
-      const list = [{
-        id: data.pipe,
-        name: data.pipe,
-        phases: data.phases
-      }];
-      
-      setPipes(list);
-      if (list.length > 0) setSelPipe(list[0].id);
-      else setStatus("error"), setErrMsg("Nenhum pipe encontrado.");
-      
-    } catch(e) {
-      console.error('Pipefy erro:', e); // DEBUG
-      setStatus("error"); 
-      setErrMsg("Falha ao conectar Pipefy: " + e.message);
-    }
-  };
-  load();
-}, []);
 
-  // Carrega pipe selecionado
-  const loadPipe = useCallback(async (id) => {
-    if (!id) return;
-    setStatus("loading-pipe"); setErrMsg("");
-    try {
-      const d = await pipefy(Q_PIPE, { id });
-      setPipeData(d?.pipe || null);
-      setStatus("ready");
-      setLastSync(new Date());
-    } catch(e) {
-      setStatus("error"); setErrMsg("Falha ao carregar pipe: " + e.message);
-    }
-  }, []);
-
-  useEffect(() => { if (selPipe) loadPipe(selPipe); }, [selPipe, loadPipe]);
+  // ABAIXO DISSO VOCÊ MANTÉM O RESTANTE (loadPipe, moveCard, etc)
 
   const moveCard = async (cardId, destPhaseId, phaseName) => {
     setMovingCard(cardId);
