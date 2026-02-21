@@ -199,15 +199,14 @@ useEffect(() => {
       setErrMsg("Falha ao conectar: " + e.message);
     }
   }, []);
-
+}
   // 2. O useEffect apenas chama o load ao iniciar
   useEffect(() => {
     load();
   }, [load]);
-
   // 3. Criamos um "apelido" para não dar erro caso algum botão ainda procure por loadPipe
   const loadPipe = load;
-}
+
   // ABAIXO DISSO VOCÊ MANTÉM O RESTANTE (loadPipe, moveCard, etc)
 
   const moveCard = async (cardId, destPhaseId, phaseName) => {
