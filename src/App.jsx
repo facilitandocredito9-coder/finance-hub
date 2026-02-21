@@ -167,17 +167,34 @@ function PipefyKanban({ toast }) {
   const [lastSync, setLastSync]     = useState(null);
 
   // Carrega os dados reais do Pipefy via Vercel
-  useEffect(() => {
+useEffect(() => {
     const load = async () => {
       setStatus("loading-pipes"); 
       setErrMsg("");
       try {
         const data = await pipefy(); 
         if (data.success) {
-          const list = [{ id: "main-pipe", name: data.pipeName, phases: data.phases }];
+          // --- INÍCIO DA CORREÇÃO ---
+          // Reestruturamos os dados para que o seu design original 
+          // encontre o "node" e o "edges" que ele espera.
+          const formattedPhases = data.phases.map(phase => ({
+            ...phase,
+            cards: {
+              edges: phase.cards.map(card => ({
+                node: { 
+                  ...card,
+                  createdAt: card.updated // Ajuste para a data aparecer
+                }
+              }))
+            }
+          }));
+
+          const list = [{ id: "main-pipe", name: data.pipeName, phases: formattedPhases }];
           setPipes(list);
           setSelPipe("main-pipe");
-          setPipeData({ name: data.pipeName, phases: data.phases });
+          setPipeData({ name: data.pipeName, phases: formattedPhases });
+          // --- FIM DA CORREÇÃO ---
+
           setStatus("ready");
           setLastSync(new Date());
         } else {
