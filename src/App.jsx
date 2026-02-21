@@ -172,13 +172,11 @@ function PipefyKanban({ toast }) {
       setStatus("loading-pipes"); 
       setErrMsg("");
       try {
-        // Chama a nossa nova função que vai no Vercel
         const data = await pipefy(); 
         
-        console.log('Dados recebidos do Vercel:', data); // Mantive um debug melhorado
+        console.log('Dados recebidos do Vercel:', data);
 
         if (data.success) {
-          // Criamos uma lista com o Pipe real para alimentar o seletor de abas
           const list = [{
             id: "main-pipe",
             name: data.pipeName,
@@ -187,8 +185,6 @@ function PipefyKanban({ toast }) {
           
           setPipes(list);
           setSelPipe("main-pipe");
-          
-          // Importante: Alimentamos o estado do PipeData com as fases que vieram
           setPipeData({ 
             name: data.pipeName, 
             phases: data.phases 
@@ -199,7 +195,6 @@ function PipefyKanban({ toast }) {
         } else {
           throw new Error(data.error || "Resposta sem sucesso da API");
         }
-        
       } catch(e) {
         console.error('Erro ao carregar o Hub:', e);
         setStatus("error"); 
